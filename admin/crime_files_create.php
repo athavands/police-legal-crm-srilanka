@@ -9,6 +9,9 @@ if (!isAdmin()) {
 
 $errors = [];
 
+/* ---------- FETCH CATEGORIES ---------- */
+$categories_result = mysqli_query($conn, "SELECT id, name FROM categories ORDER BY name ASC");
+
 if (isset($_POST['save'])) {
 
     $subject_number  = trim($_POST['subject_number']);
@@ -18,9 +21,8 @@ if (isset($_POST['save'])) {
     $in_date         = $_POST['in_date'];
     $court_number    = trim($_POST['court_number']);
     $gcr_number      = trim($_POST['gcr_number']);
-
-    $category_id = auth()['category_id'];
-    $created_by  = auth()['id'];
+    $category_id     = (int)$_POST['category_id']; // from form
+    $created_by      = auth()['id'];
 
     /* ---------- VALIDATION ---------- */
     if ($subject_number == '')  $errors[] = "Subject Number is required";
@@ -28,6 +30,7 @@ if (isset($_POST['save'])) {
     if ($police_station == '')  $errors[] = "Police Station is required";
     if ($crime == '')           $errors[] = "Crime is required";
     if ($in_date == '')         $errors[] = "In Date is required";
+    if ($category_id <= 0)      $errors[] = "Category selection is required";
 
     if (empty($_FILES['pdf_files']['name'][0])) {
         $errors[] = "At least one PDF file is required";
@@ -62,9 +65,7 @@ if (isset($_POST['save'])) {
             $tmpName = $_FILES['pdf_files']['tmp_name'][$key];
             $ext     = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-            if ($ext !== 'pdf') {
-                continue;
-            }
+            if ($ext !== 'pdf') continue;
 
             $newName = time() . "_" . rand(1000,9999) . ".pdf";
             $path    = $uploadDir . $newName;
@@ -100,7 +101,7 @@ include "../assets/header.php";
         <div class="alert alert-danger">
             <ul class="mb-0">
                 <?php foreach ($errors as $e) : ?>
-                    <li><?= $e ?></li>
+                    <li><?= htmlspecialchars($e) ?></li>
                 <?php endforeach; ?>
             </ul>
         </div>
@@ -143,12 +144,21 @@ include "../assets/header.php";
                 <label>GCR Number</label>
                 <input type="text" name="gcr_number" class="form-control">
             </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Category *</label>
+                <select name="category_id" class="form-control" required>
+                    <option value="">-- Select Category --</option>
+                    <?php while ($cat = mysqli_fetch_assoc($categories_result)) : ?>
+                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
         </div>
 
         <hr>
 
         <h6>Upload PDF Files *</h6>
-
         <div id="pdf-wrapper">
             <div class="mb-2">
                 <input type="file" name="pdf_files[]" class="form-control" accept="application/pdf" required>
@@ -170,9 +180,7 @@ include "../assets/header.php";
 function addPdf() {
     const div = document.createElement('div');
     div.className = 'mb-2';
-    div.innerHTML = `
-        <input type="file" name="pdf_files[]" class="form-control" accept="application/pdf" required>
-    `;
+    div.innerHTML = `<input type="file" name="pdf_files[]" class="form-control" accept="application/pdf" required>`;
     document.getElementById('pdf-wrapper').appendChild(div);
 }
 </script>
