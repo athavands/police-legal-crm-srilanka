@@ -19,7 +19,7 @@ if (isset($_POST['login'])) {
             'username' => $user['username'],
             'role' => $user['role'],
             'profile_pic' => $user['profile_pic'],
-            'categoryId' => $user['category_id']
+             'category_id' => $user['category_id']
         ];
 
         if ($user['role'] === 'super_admin') {
