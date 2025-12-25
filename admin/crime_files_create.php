@@ -10,39 +10,64 @@ if (!isAdmin()) {
 $errors = [];
 
 /* ---------- FETCH CATEGORIES ---------- */
-$categories_result = mysqli_query($conn, "SELECT id, name FROM categories ORDER BY name ASC");
+$categories_result = mysqli_query(
+    $conn,
+    "SELECT id, name FROM categories ORDER BY name ASC"
+);
 
 if (isset($_POST['save'])) {
 
-    $subject_number  = trim($_POST['subject_number']);
-    $division        = trim($_POST['division']);
-    $police_station  = trim($_POST['police_station']);
-    $crime           = trim($_POST['crime']);
-    $in_date         = $_POST['in_date'];
-    $court_number    = trim($_POST['court_number']);
-    $gcr_number      = trim($_POST['gcr_number']);
-    $category_id     = (int)$_POST['category_id']; // from form
-    $created_by      = auth()['id'];
+    /* ---------- BASIC FIELDS ---------- */
+    $subject_number = trim($_POST['subject_number'] ?? '');
+    $division       = trim($_POST['division'] ?? '');
+    $police_station = trim($_POST['police_station'] ?? '');
+    $crime          = trim($_POST['crime'] ?? '');
+    $in_date        = $_POST['in_date'] ?? '';
+    $court_number   = trim($_POST['court_number'] ?? '');
+    $gcr_number     = trim($_POST['gcr_number'] ?? '');
+
+    /* ---------- LEGAL / NEW FIELDS ---------- */
+    $in_word_no_date                = trim($_POST['in_word_no_date'] ?? '');
+    $division_station_out_word_date = trim($_POST['division_station_out_word_date'] ?? '');
+    $remember_date                  = $_POST['remember_date'] ?? null;
+    $dir_legal_out_word_date        = trim($_POST['dir_legal_out_word_date'] ?? '');
+    $dir_legal_subject_number       = trim($_POST['dir_legal_subject_number'] ?? '');
+
+    $category_id = (int)($_POST['category_id'] ?? 0);
+    $created_by  = auth()['id'];
 
     /* ---------- VALIDATION ---------- */
-    if ($subject_number == '')  $errors[] = "Subject Number is required";
-    if ($division == '')        $errors[] = "Division is required";
-    if ($police_station == '')  $errors[] = "Police Station is required";
-    if ($crime == '')           $errors[] = "Crime is required";
-    if ($in_date == '')         $errors[] = "In Date is required";
+    if ($subject_number === '') $errors[] = "Subject Number is required";
+    if ($division === '')       $errors[] = "Division is required";
+    if ($police_station === '') $errors[] = "Police Station is required";
+    if ($crime === '')          $errors[] = "Crime is required";
+    if ($in_date === '')        $errors[] = "In Date is required";
     if ($category_id <= 0)      $errors[] = "Category selection is required";
 
-    if (empty($_FILES['pdf_files']['name'][0])) {
-        $errors[] = "At least one PDF file is required";
-    }
+    // if (empty($_FILES['pdf_files']['name'][0])) {
+    //     $errors[] = "At least one PDF file is required";
+    // }
 
-    /* ---------- SAVE DATA ---------- */
+    /* ---------- INSERT DATA ---------- */
     if (empty($errors)) {
 
-        mysqli_query($conn, "
-            INSERT INTO crime_files 
-            (subject_number, division, police_station, crime, in_date, court_number, gcr_number, category_id, created_by)
-            VALUES (
+        $sql = "
+            INSERT INTO crime_files (
+                subject_number,
+                division,
+                police_station,
+                crime,
+                in_date,
+                court_number,
+                gcr_number,
+                in_word_no_date,
+                division_station_out_word_date,
+                remember_date,
+                dir_legal_out_word_date,
+                dir_legal_subject_number,
+                category_id,
+                created_by
+            ) VALUES (
                 '$subject_number',
                 '$division',
                 '$police_station',
@@ -50,10 +75,17 @@ if (isset($_POST['save'])) {
                 '$in_date',
                 '$court_number',
                 '$gcr_number',
+                '$in_word_no_date',
+                '$division_station_out_word_date',
+                " . ($remember_date ? "'$remember_date'" : "NULL") . ",
+                '$dir_legal_out_word_date',
+                '$dir_legal_subject_number',
                 '$category_id',
                 '$created_by'
             )
-        ");
+        ";
+
+        mysqli_query($conn, $sql);
 
         $crime_file_id = mysqli_insert_id($conn);
 
@@ -63,25 +95,18 @@ if (isset($_POST['save'])) {
         foreach ($_FILES['pdf_files']['name'] as $key => $fileName) {
 
             $tmpName = $_FILES['pdf_files']['tmp_name'][$key];
-            $ext     = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
             if ($ext !== 'pdf') continue;
 
-            $newName = time() . "_" . rand(1000,9999) . ".pdf";
-            $path    = $uploadDir . $newName;
+            $newName = time() . "_" . rand(1000, 9999) . ".pdf";
 
-            if (move_uploaded_file($tmpName, $path)) {
+            if (move_uploaded_file($tmpName, $uploadDir . $newName)) {
                 mysqli_query($conn, "
                     INSERT INTO pdf_stuff
                     (crime_file_id, file_name, file_path, category_id, created_by)
                     VALUES
-                    (
-                        '$crime_file_id',
-                        '$fileName',
-                        '$newName',
-                        '$category_id',
-                        '$created_by'
-                    )
+                    ('$crime_file_id','$fileName','$newName','$category_id','$created_by')
                 ");
             }
         }
@@ -97,10 +122,10 @@ include "../assets/header.php";
 <div class="card p-4">
     <h4>Create Crime File</h4>
 
-    <?php if (!empty($errors)) : ?>
+    <?php if (!empty($errors)): ?>
         <div class="alert alert-danger">
             <ul class="mb-0">
-                <?php foreach ($errors as $e) : ?>
+                <?php foreach ($errors as $e): ?>
                     <li><?= htmlspecialchars($e) ?></li>
                 <?php endforeach; ?>
             </ul>
@@ -110,6 +135,7 @@ include "../assets/header.php";
     <form method="POST" enctype="multipart/form-data">
 
         <div class="row">
+
             <div class="col-md-6 mb-3">
                 <label>Subject Number *</label>
                 <input type="text" name="subject_number" class="form-control" required>
@@ -149,19 +175,57 @@ include "../assets/header.php";
                 <label>Category *</label>
                 <select name="category_id" class="form-control" required>
                     <option value="">-- Select Category --</option>
-                    <?php while ($cat = mysqli_fetch_assoc($categories_result)) : ?>
-                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                    <?php while ($cat = mysqli_fetch_assoc($categories_result)): ?>
+                        <option value="<?= $cat['id'] ?>">
+                            <?= htmlspecialchars($cat['name']) ?>
+                        </option>
                     <?php endwhile; ?>
                 </select>
             </div>
+
+        </div>
+
+        <hr>
+
+        <h5>Legal / Office Details</h5>
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+                <label>IN Word No – Date</label>
+                <input type="text" name="in_word_no_date" class="form-control">
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Division / Station OUT Word – Date</label>
+                <input type="text" name="division_station_out_word_date" class="form-control">
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Remember Date</label>
+                <input type="date" name="remember_date" class="form-control">
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Dir Legal OUT Word – Date</label>
+                <input type="text" name="dir_legal_out_word_date" class="form-control">
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Dir Legal Subject Number</label>
+                <input type="text" name="dir_legal_subject_number" class="form-control">
+            </div>
+
         </div>
 
         <hr>
 
         <h6>Upload PDF Files *</h6>
+
         <div id="pdf-wrapper">
             <div class="mb-2">
-                <input type="file" name="pdf_files[]" class="form-control" accept="application/pdf" required>
+                <input type="file" name="pdf_files[]" class="form-control"
+                       accept="application/pdf" >
             </div>
         </div>
 
@@ -173,6 +237,7 @@ include "../assets/header.php";
 
         <button class="btn btn-success" name="save">Save Crime File</button>
         <a href="dashboard.php" class="btn btn-secondary">Back</a>
+
     </form>
 </div>
 
@@ -180,7 +245,9 @@ include "../assets/header.php";
 function addPdf() {
     const div = document.createElement('div');
     div.className = 'mb-2';
-    div.innerHTML = `<input type="file" name="pdf_files[]" class="form-control" accept="application/pdf" required>`;
+    div.innerHTML =
+        `<input type="file" name="pdf_files[]" class="form-control"
+                accept="application/pdf">`;
     document.getElementById('pdf-wrapper').appendChild(div);
 }
 </script>

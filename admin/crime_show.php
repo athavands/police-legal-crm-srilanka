@@ -34,7 +34,6 @@ if (!$result || mysqli_num_rows($result) == 0) {
 $crime = mysqli_fetch_assoc($result);
 
 /* ---------------- LOG SEEN INFO ---------------- */
-// Only for normal users
 if (auth()['role'] !== 'super_admin') {
     $pdf_list = mysqli_query($conn, "SELECT id FROM pdf_stuff WHERE crime_file_id = $id AND deleted_at IS NULL");
     foreach ($pdf_list as $pdf) {
@@ -55,15 +54,25 @@ include "../assets/header.php";
 <div class="container mt-4">
     <div class="card p-4 shadow-sm">
         <h4 class="mb-3"><?= htmlspecialchars($crime['subject_number']) ?></h4>
+        <a href="crime_files_edit.php?id=<?= $crime['id'] ?>" class="btn btn-warning btn-sm mb-3">✏ Edit</a>
 
         <ul class="list-group mb-3">
             <li class="list-group-item"><b>Division:</b> <?= htmlspecialchars($crime['division']) ?></li>
             <li class="list-group-item"><b>Police Station:</b> <?= htmlspecialchars($crime['police_station']) ?></li>
             <li class="list-group-item"><b>Crime:</b> <?= htmlspecialchars($crime['crime']) ?></li>
+            <li class="list-group-item"><b>In Date:</b> <?= htmlspecialchars($crime['in_date']) ?></li>
             <li class="list-group-item"><b>Court Number:</b> <?= htmlspecialchars($crime['court_number']) ?></li>
             <li class="list-group-item"><b>GCR Number:</b> <?= htmlspecialchars($crime['gcr_number']) ?></li>
-            <li class="list-group-item"><b>In Date:</b> <?= htmlspecialchars($crime['in_date']) ?></li>
+            <li class="list-group-item"><b>IN Word No – Date:</b> <?= htmlspecialchars($crime['in_word_no_date']) ?></li>
+            <li class="list-group-item"><b>Division / Station OUT Word – Date:</b> <?= htmlspecialchars($crime['division_station_out_word_date']) ?></li>
+            <li class="list-group-item"><b>Remember Date:</b> <?= htmlspecialchars($crime['remember_date']) ?></li>
+            <li class="list-group-item"><b>Dir Legal OUT Word – Date:</b> <?= htmlspecialchars($crime['dir_legal_out_word_date']) ?></li>
+            <li class="list-group-item"><b>Dir Legal Subject Number:</b> <?= htmlspecialchars($crime['dir_legal_subject_number']) ?></li>
+            <li class="list-group-item"><b>Category ID:</b> <?= htmlspecialchars($crime['category_id']) ?></li>
+            <li class="list-group-item"><b>Created By:</b> <?= htmlspecialchars($crime['created_by']) ?></li>
+            <li class="list-group-item"><b>Updated By:</b> <?= htmlspecialchars($crime['updated_by']) ?></li>
             <li class="list-group-item"><b>Created At:</b> <?= htmlspecialchars($crime['created_at']) ?></li>
+            <li class="list-group-item"><b>Updated At:</b> <?= htmlspecialchars($crime['updated_at']) ?></li>
         </ul>
 
         <h5>PDF Files</h5>
