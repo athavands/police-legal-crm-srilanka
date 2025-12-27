@@ -33,7 +33,8 @@ if (isset($_POST['save'])) {
     $subject_number = mysqli_real_escape_string($conn, trim($_POST['subject_number']));
     $division       = mysqli_real_escape_string($conn, trim($_POST['division']));
     $police_station = mysqli_real_escape_string($conn, trim($_POST['police_station']));
-    $crime          = mysqli_real_escape_string($conn, trim($_POST['crime']));
+    // $crime field removed
+    $description    = mysqli_real_escape_string($conn, trim($_POST['description'])); 
     $in_date        = $_POST['in_date'];
     $court_number   = mysqli_real_escape_string($conn, trim($_POST['court_number']));
     $gcr_number     = mysqli_real_escape_string($conn, trim($_POST['gcr_number']));
@@ -45,14 +46,15 @@ if (isset($_POST['save'])) {
     $category_id    = (int)$_POST['category_id'];
     $updated_by     = auth()['id'];
 
-    if (!$subject_number || !$division || !$police_station || !$crime || !$in_date || $category_id <= 0) {
+    if (!$subject_number || !$division || !$police_station || !$in_date || $category_id <= 0) {
         $errors[] = "Please fill in all required fields (*)";
     }
 
     if (empty($errors)) {
+        // Updated SQL: Removed crime field, kept description
         $sql = "UPDATE crime_files SET 
                 subject_number='$subject_number', division='$division', police_station='$police_station', 
-                crime='$crime', in_date='$in_date', court_number='$court_number', gcr_number='$gcr_number', 
+                description='$description', in_date='$in_date', court_number='$court_number', gcr_number='$gcr_number', 
                 in_word_no_date='$in_word_no_date', division_station_out_word_date='$division_station_out_word_date', 
                 remember_date=" . ($remember_date ? "'$remember_date'" : "NULL") . ", 
                 dir_legal_out_word_date='$dir_legal_out_word_date', dir_legal_subject_number='$dir_legal_subject_number', 
@@ -60,7 +62,6 @@ if (isset($_POST['save'])) {
                 WHERE id='$crime_file_id'";
 
         if (mysqli_query($conn, $sql)) {
-            // Handle PDF Uploads
             if (!empty($_FILES['pdf_files']['name'][0])) {
                 $uploadDir = "../uploads/crime_pdfs/";
                 foreach ($_FILES['pdf_files']['name'] as $key => $fileName) {
@@ -116,7 +117,6 @@ if (isset($_POST['save'])) {
         <a href="crime_files_create.php" class="nav-link"><i class="fas fa-folder-plus me-2"></i> New File</a>
         <hr class="text-secondary opacity-25">
         <a href="profile.php" class="nav-link"><i class="fas fa-folder-plus"></i> Change Pasword</a>
-
         <a href="../auth/logout.php" class="nav-link text-danger"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
     </div>
 </nav>
@@ -163,8 +163,8 @@ if (isset($_POST['save'])) {
                             <input type="text" name="police_station" class="form-control" required value="<?= htmlspecialchars($crime_file['police_station']) ?>">
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Crime Description *</label>
-                            <input type="text" name="crime" class="form-control" required value="<?= htmlspecialchars($crime_file['crime']) ?>">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-control" rows="6" placeholder="Enter detailed case description..."><?= htmlspecialchars($crime_file['description'] ?? '') ?></textarea>
                         </div>
                     </div>
                 </div>

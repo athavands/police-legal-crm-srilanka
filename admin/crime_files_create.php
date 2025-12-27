@@ -16,11 +16,11 @@ $categories_result = mysqli_query(
 );
 
 if (isset($_POST['save'])) {
-    /* Logic remains identical to your original code */
     $subject_number = trim($_POST['subject_number'] ?? '');
     $division       = trim($_POST['division'] ?? '');
     $police_station = trim($_POST['police_station'] ?? '');
     $crime          = trim($_POST['crime'] ?? '');
+    $description    = trim($_POST['description'] ?? ''); // Added field
     $in_date        = $_POST['in_date'] ?? '';
     $court_number   = trim($_POST['court_number'] ?? '');
     $gcr_number     = trim($_POST['gcr_number'] ?? '');
@@ -42,8 +42,9 @@ if (isset($_POST['save'])) {
     if ($category_id <= 0)      $errors[] = "Category selection is required";
 
     if (empty($errors)) {
-        $sql = "INSERT INTO crime_files (subject_number, division, police_station, crime, in_date, court_number, gcr_number, in_word_no_date, division_station_out_word_date, remember_date, dir_legal_out_word_date, dir_legal_subject_number, category_id, created_by) 
-                VALUES ('$subject_number', '$division', '$police_station', '$crime', '$in_date', '$court_number', '$gcr_number', '$in_word_no_date', '$division_station_out_word_date', " . ($remember_date ? "'$remember_date'" : "NULL") . ", '$dir_legal_out_word_date', '$dir_legal_subject_number', '$category_id', '$created_by')";
+        // Updated SQL to include description
+        $sql = "INSERT INTO crime_files (subject_number, division, police_station, crime, description, in_date, court_number, gcr_number, in_word_no_date, division_station_out_word_date, remember_date, dir_legal_out_word_date, dir_legal_subject_number, category_id, created_by) 
+                VALUES ('$subject_number', '$division', '$police_station', '$crime', '$description', '$in_date', '$court_number', '$gcr_number', '$in_word_no_date', '$division_station_out_word_date', " . ($remember_date ? "'$remember_date'" : "NULL") . ", '$dir_legal_out_word_date', '$dir_legal_subject_number', '$category_id', '$created_by')";
 
         mysqli_query($conn, $sql);
         $crime_file_id = mysqli_insert_id($conn);
@@ -119,7 +120,6 @@ if (isset($_POST['save'])) {
         <a href="categories.php" class="nav-link"><i class="fas fa-list-ul"></i> Categories</a>
         <hr class="text-secondary opacity-25">
         <a href="profile.php" class="nav-link"><i class="fas fa-folder-plus"></i> Change Pasword</a>
-
         <a href="../auth/logout.php" class="nav-link text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
 </nav>
@@ -161,12 +161,16 @@ if (isset($_POST['save'])) {
                     <input type="text" name="police_station" class="form-control" placeholder="Enter Station" required>
                 </div>
                 <div class="col-md-8">
-                    <label>Crime Description <span class="text-danger">*</span></label>
+                    <label>Crime <span class="text-danger">*</span></label>
                     <input type="text" name="crime" class="form-control" placeholder="Nature of the crime" required>
                 </div>
                 <div class="col-md-4">
                     <label>In Date <span class="text-danger">*</span></label>
                     <input type="date" name="in_date" class="form-control" required>
+                </div>
+                <div class="col-md-12">
+                    <label>Description</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="Additional case details..."></textarea>
                 </div>
                 <div class="col-md-4">
                     <label>Court Number</label>
