@@ -49,7 +49,20 @@ if (!empty($_GET['search'])) {
     )";
 }
 
-$q = mysqli_query($conn,"SELECT * FROM crime_files WHERE $where ORDER BY $sort $order");
+/* -------------------- PAGINATION LOGIC -------------------- */
+$limit = 25; 
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+$totalQuery = mysqli_query($conn, "SELECT COUNT(*) as total FROM crime_files WHERE $where");
+$totalRows = mysqli_fetch_assoc($totalQuery)['total'];
+$totalPages = ceil($totalRows / $limit);
+
+// Main display query
+$q = mysqli_query($conn,"SELECT * FROM crime_files WHERE $where ORDER BY $sort $order LIMIT $offset, $limit");
+
+// Full query for Export (all matching records)
+$export_q = mysqli_query($conn, "SELECT * FROM crime_files WHERE $where ORDER BY $sort $order");
 
 /* -------------------- SORT LINK HELPER -------------------- */
 function sortLink($column, $label) {
@@ -57,7 +70,6 @@ function sortLink($column, $label) {
     $currentOrder = $_GET['order'] ?? 'DESC';
     $newOrder = ($currentSort === $column && $currentOrder === 'ASC') ? 'DESC' : 'ASC';
     
-    // Icon logic
     $icon = '<i class="fas fa-sort text-muted opacity-25 ms-1"></i>';
     if ($currentSort === $column) {
         $icon = ($currentOrder === 'ASC') ? '<i class="fas fa-sort-up ms-1 text-primary"></i>' : '<i class="fas fa-sort-down ms-1 text-primary"></i>';
@@ -87,7 +99,6 @@ function sortLink($column, $label) {
         #content { margin-left: var(--sidebar-width); padding: 25px; transition: 0.3s; }
         @media (max-width: 1024px) { #sidebar { left: -260px; } #sidebar.active { left: 0; } #content { margin-left: 0; } }
         
-        /* Table Styles for many columns */
         .table-container { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .table thead th { background: #f8fafc; border-bottom: 2px solid #e2e8f0; white-space: nowrap; padding: 15px 12px; font-size: 0.75rem; }
         .table tbody td { padding: 12px; font-size: 0.8rem; vertical-align: middle; white-space: nowrap; }
@@ -117,7 +128,18 @@ function sortLink($column, $label) {
     <div class="d-flex justify-content-between align-items-center mb-4">
         <button id="toggleBtn" class="btn btn-outline-dark d-lg-none"><i class="fas fa-bars"></i></button>
         <h4 class="fw-bold m-0">Case Files Dashboard</h4>
-        <div class="small text-muted">Category ID: <span class="badge bg-secondary"><?= $cat ?></span></div>
+        
+        <div class="d-flex align-items-center gap-3">
+            <div class="btn-group shadow-sm">
+                <button onclick="exportToExcel()" class="btn btn-white bg-white border text-success fw-bold small">
+                    <i class="fas fa-file-excel me-1"></i> EXCEL
+                </button>
+                <button onclick="exportToPDF()" class="btn btn-white bg-white border text-danger fw-bold small">
+                    <i class="fas fa-file-pdf me-1"></i> PDF
+                </button>
+            </div>
+            <div class="small text-muted">Category ID: <span class="badge bg-secondary"><?= $cat ?></span></div>
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
@@ -131,7 +153,7 @@ function sortLink($column, $label) {
             <div class="col-md-3">
                 <select name="year" class="form-select">
                     <option value="">All Filing Years</option>
-                    <?php while ($y = mysqli_fetch_assoc($yearsRes)): ?>
+                    <?php mysqli_data_seek($yearsRes, 0); while ($y = mysqli_fetch_assoc($yearsRes)): ?>
                         <option value="<?= $y['year'] ?>" <?= (($_GET['year'] ?? '') == $y['year']) ? 'selected' : '' ?>><?= $y['year'] ?></option>
                     <?php endwhile; ?>
                 </select>
@@ -200,14 +222,93 @@ function sortLink($column, $label) {
                 </tbody>
             </table>
         </div>
-    </div>
-    <p class="text-center mt-4 text-muted small">&copy; <?= date('Y') ?> Police Legal Division | Software Developed by Athavan DS</p>
 
+        <?php if ($totalPages > 1): ?>
+        <div class="p-3 border-top bg-light">
+            <nav>
+                <ul class="pagination pagination-sm m-0 justify-content-center">
+                    <?php 
+                        $queryParams = $_GET;
+                        for ($i = 1; $i <= $totalPages; $i++): 
+                        $queryParams['page'] = $i;
+                    ?>
+                    <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query($queryParams) ?>"><?= $i ?></a>
+                    </li>
+                    <?php endfor; ?>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <table id="hiddenExportTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>Subject Number</th><th>Division</th><th>Station</th><th>Crime Type</th>
+                <th>In Date</th><th>Court Number</th><th>GCR Number</th><th>In Word/Date</th>
+                <th>Div Out/Date</th><th>Reminder Date</th><th>Legal Out/Date</th><th>Legal Sub No</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php 
+            mysqli_data_seek($export_q, 0);
+            while($ex = mysqli_fetch_assoc($export_q)): ?>
+            <tr>
+                <td><?= $ex['subject_number'] ?></td>
+                <td><?= $ex['division'] ?></td>
+                <td><?= $ex['police_station'] ?></td>
+                <td><?= $ex['crime'] ?></td>
+                <td><?= $ex['in_date'] ?></td>
+                <td><?= $ex['court_number'] ?></td>
+                <td><?= $ex['gcr_number'] ?></td>
+                <td><?= $ex['in_word_no_date'] ?></td>
+                <td><?= $ex['division_station_out_word_date'] ?></td>
+                <td><?= $ex['remember_date'] ?></td>
+                <td><?= $ex['dir_legal_out_word_date'] ?></td>
+                <td><?= $ex['dir_legal_subject_number'] ?></td>
+            </tr>
+            <?php endwhile; ?>
+        </tbody>
+    </table>
+
+    <p class="text-center mt-4 text-muted small">&copy; <?= date('Y') ?> Police Legal Division | Software Developed by Athavan DS</p>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
 <script>
     $('#toggleBtn').click(function() { $('#sidebar').toggleClass('active'); });
+
+    function exportToExcel() {
+        var table = document.getElementById("hiddenExportTable");
+        var wb = XLSX.utils.table_to_book(table, { sheet: "Case Records" });
+        XLSX.writeFile(wb, "Case_Files_Export_<?= date('Ymd') ?>.xlsx");
+    }
+
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); 
+        doc.setFontSize(16);
+        doc.text("Police Legal Division - Case File Records", 14, 15);
+        doc.setFontSize(10);
+        doc.text("Generated on: <?= date('Y-m-d H:i') ?>", 14, 22);
+
+        doc.autoTable({
+            html: '#hiddenExportTable',
+            startY: 28,
+            theme: 'grid',
+            styles: { fontSize: 7, cellPadding: 2 },
+            headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+            alternateRowStyles: { fillColor: [245, 247, 250] }
+        });
+        doc.save("Case_Files_Export_<?= date('Ymd') ?>.pdf");
+    }
 </script>
 
 </body>

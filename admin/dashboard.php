@@ -54,7 +54,20 @@ if (!empty($_GET['search'])) {
     )";
 }
 
-$q = mysqli_query($conn, "SELECT * FROM crime_files WHERE $where ORDER BY $sort $order");
+/* -------------------- PAGINATION LOGIC -------------------- */
+$limit = 25; // Records per page
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+
+$totalQuery = mysqli_query($conn, "SELECT COUNT(*) as total FROM crime_files WHERE $where");
+$totalRows = mysqli_fetch_assoc($totalQuery)['total'];
+$totalPages = ceil($totalRows / $limit);
+
+// Main Query for Display
+$q = mysqli_query($conn, "SELECT * FROM crime_files WHERE $where ORDER BY $sort $order LIMIT $offset, $limit");
+
+// Query for Export (Full set based on filters, no limit)
+$export_q = mysqli_query($conn, "SELECT * FROM crime_files WHERE $where ORDER BY $sort $order");
 
 /* -------------------- HELPER FUNCTIONS -------------------- */
 $yearsRes = mysqli_query($conn, "SELECT DISTINCT YEAR(in_date) AS year FROM crime_files WHERE deleted_at IS NULL ORDER BY year DESC");
@@ -74,7 +87,7 @@ function sortLink($column, $label) {
     $query['order'] = $newOrder;
 
     return '<a href="?' . http_build_query($query) . '" class="text-nowrap text-dark text-decoration-none fw-bold small">' 
-           . strtoupper($label) . $icon . '</a>';
+            . strtoupper($label) . $icon . '</a>';
 }
 ?>
 
@@ -119,7 +132,6 @@ function sortLink($column, $label) {
         .nav-link:hover, .nav-link.active { background: #1e293b; color: #38bdf8; }
         .nav-link i { width: 25px; }
 
-        /* Notification Bubble Style */
         .notif-bubble {
             position: absolute;
             top: 50%;
@@ -131,7 +143,6 @@ function sortLink($column, $label) {
             box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
         }
 
-        /* Topbar Dropdown Custom Styles */
         .notif-dropdown-menu {
             width: 320px;
             border: none;
@@ -203,6 +214,15 @@ function sortLink($column, $label) {
         <h4 class="fw-bold m-0 d-none d-sm-block">Crime File Records</h4>
         
         <div class="d-flex align-items-center gap-3">
+            <div class="btn-group shadow-sm">
+                <button onclick="exportToExcel()" class="btn btn-white bg-white border text-success fw-bold small">
+                    <i class="fas fa-file-excel me-1"></i> EXCEL
+                </button>
+                <button onclick="exportToPDF()" class="btn btn-white bg-white border text-danger fw-bold small">
+                    <i class="fas fa-file-pdf me-1"></i> PDF
+                </button>
+            </div>
+
             <div class="dropdown">
                 <button class="btn btn-white bg-white border rounded-circle shadow-sm p-2 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-bell text-muted"></i>
@@ -268,7 +288,7 @@ function sortLink($column, $label) {
 
     <div class="table-card shadow-sm">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="mainDataTable">
                 <thead>
                     <tr>
                         <th class="ps-3"><?= sortLink('subject_number', 'Subject #') ?></th>
@@ -329,13 +349,65 @@ function sortLink($column, $label) {
                 </tbody>
             </table>
         </div>
+        
+        <?php if ($totalPages > 1): ?>
+        <div class="p-3 border-top bg-light">
+            <nav>
+                <ul class="pagination pagination-sm m-0 justify-content-center">
+                    <?php 
+                        $queryParams = $_GET;
+                        for ($i = 1; $i <= $totalPages; $i++): 
+                        $queryParams['page'] = $i;
+                    ?>
+                    <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query($queryParams) ?>"><?= $i ?></a>
+                    </li>
+                    <?php endfor; ?>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
+
+    <table id="hiddenExportTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>Subject Number</th><th>Division</th><th>Police Station</th><th>Crime</th>
+                <th>In Date</th><th>Court Number</th><th>GCR Number</th><th>In Word</th>
+                <th>Div OW</th><th>Reminder Date</th><th>DL OW</th><th>DL Subject</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php 
+            mysqli_data_seek($export_q, 0);
+            while($ex = mysqli_fetch_assoc($export_q)): ?>
+            <tr>
+                <td><?= $ex['subject_number'] ?></td>
+                <td><?= $ex['division'] ?></td>
+                <td><?= $ex['police_station'] ?></td>
+                <td><?= $ex['crime'] ?></td>
+                <td><?= $ex['in_date'] ?></td>
+                <td><?= $ex['court_number'] ?></td>
+                <td><?= $ex['gcr_number'] ?></td>
+                <td><?= $ex['in_word_no_date'] ?></td>
+                <td><?= $ex['division_station_out_word_date'] ?></td>
+                <td><?= $ex['remember_date'] ?></td>
+                <td><?= $ex['dir_legal_out_word_date'] ?></td>
+                <td><?= $ex['dir_legal_subject_number'] ?></td>
+            </tr>
+            <?php endwhile; ?>
+        </tbody>
+    </table>
     
     <p class="text-center mt-4 text-muted small">&copy; <?= date('Y') ?> Police Legal Division | Software Developed by Athavan DS</p>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <script>
     $('#toggleBtn').click(function() {
@@ -347,6 +419,35 @@ function sortLink($column, $label) {
             $('#sidebar').removeClass('active');
         }
     });
+
+    // EXCEL EXPORT FUNCTION
+    function exportToExcel() {
+        var table = document.getElementById("hiddenExportTable");
+        var wb = XLSX.utils.table_to_book(table, { sheet: "Crime Records" });
+        XLSX.writeFile(wb, "Crime_Records_Export_<?= date('Ymd') ?>.xlsx");
+    }
+
+    // PDF EXPORT FUNCTION
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
+
+        doc.setFontSize(16);
+        doc.text("Police Legal Division - Crime File Records", 14, 15);
+        doc.setFontSize(10);
+        doc.text("Generated on: <?= date('Y-m-d H:i') ?>", 14, 22);
+
+        doc.autoTable({
+            html: '#hiddenExportTable',
+            startY: 28,
+            theme: 'grid',
+            styles: { fontSize: 7, cellPadding: 2 },
+            headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+            alternateRowStyles: { fillColor: [245, 247, 250] }
+        });
+
+        doc.save("Crime_Records_Export_<?= date('Ymd') ?>.pdf");
+    }
 </script>
 
 </body>
