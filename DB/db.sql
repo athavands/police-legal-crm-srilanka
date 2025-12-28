@@ -22,9 +22,7 @@ CREATE TABLE `categories` (
   `city` varchar(100) NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*Data for the table `categories` */
+) ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 /*Table structure for table `crime_files` */
 
@@ -36,6 +34,7 @@ CREATE TABLE `crime_files` (
   `division` varchar(100) NOT NULL,
   `police_station` varchar(100) NOT NULL,
   `crime` varchar(100) NOT NULL,
+  `description` text,
   `in_date` date NOT NULL,
   `court_number` varchar(150) DEFAULT NULL,
   `gcr_number` varchar(50) DEFAULT NULL,
@@ -53,9 +52,7 @@ CREATE TABLE `crime_files` (
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `category_id` (`category_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*Data for the table `crime_files` */
+) ENGINE=MyISAM AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 /*Table structure for table `pdf_stuff` */
 
@@ -77,8 +74,6 @@ CREATE TABLE `pdf_stuff` (
   KEY `crime_file_id` (`crime_file_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-/*Data for the table `pdf_stuff` */
-
 /*Table structure for table `seen_info` */
 
 DROP TABLE IF EXISTS `seen_info`;
@@ -92,8 +87,6 @@ CREATE TABLE `seen_info` (
   KEY `pdf_id` (`pdf_id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*Data for the table `seen_info` */
 
 /*Table structure for table `users` */
 
@@ -112,12 +105,7 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   KEY `fk_users_category` (`category_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*Data for the table `users` */
-
-insert  into `users`(`id`,`username`,`password`,`profile_pic`,`role`,`created_at`,`category_id`,`created_by`,`deleted_at`) values 
-(1,'admin','21232f297a57a5a743894a0e4a801fc3','1766430253_548525649_782641601600847_6336705901751037841_n.jpg','super_admin','2025-12-23 00:31:38',2,NULL,NULL);
+) ENGINE=MyISAM AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
