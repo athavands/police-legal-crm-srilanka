@@ -50,18 +50,24 @@ if (!empty($_GET['search'])) {
 }
 
 /* -------------------- PAGINATION LOGIC -------------------- */
-$limit = 25; 
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 50; // Updated to 50 records per page
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
 $offset = ($page - 1) * $limit;
 
+// Calculate Total Rows
 $totalQuery = mysqli_query($conn, "SELECT COUNT(*) as total FROM crime_files WHERE $where");
-$totalRows = mysqli_fetch_assoc($totalQuery)['total'];
+$totalData = mysqli_fetch_assoc($totalQuery);
+$totalRows = $totalData['total'];
 $totalPages = ceil($totalRows / $limit);
 
-// Main display query
+// Handle page overflow
+if ($totalPages > 0 && $page > $totalPages) { $page = $totalPages; $offset = ($page - 1) * $limit; }
+
+// Main display query (With Limit)
 $q = mysqli_query($conn,"SELECT * FROM crime_files WHERE $where ORDER BY $sort $order LIMIT $offset, $limit");
 
-// Full query for Export (all matching records)
+// Full query for Export (No Limit)
 $export_q = mysqli_query($conn, "SELECT * FROM crime_files WHERE $where ORDER BY $sort $order");
 
 /* -------------------- SORT LINK HELPER -------------------- */
@@ -78,6 +84,7 @@ function sortLink($column, $label) {
     $query = $_GET;
     $query['sort']  = $column;
     $query['order'] = $newOrder;
+    $query['page']  = 1; // Reset to page 1 on new sort
 
     return '<a href="?' . http_build_query($query) . '" class="text-dark text-decoration-none fw-bold small text-uppercase">' . $label . $icon . '</a>';
 }
@@ -168,6 +175,10 @@ function sortLink($column, $label) {
     </div>
 
     <div class="table-container overflow-hidden">
+        <div class="p-2 px-3 bg-white border-bottom small text-muted">
+            Showing <?= mysqli_num_rows($q) ?> of <?= $totalRows ?> records (Page <?= $page ?> of <?= $totalPages ?: 1 ?>)
+        </div>
+
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
@@ -229,13 +240,34 @@ function sortLink($column, $label) {
                 <ul class="pagination pagination-sm m-0 justify-content-center">
                     <?php 
                         $queryParams = $_GET;
-                        for ($i = 1; $i <= $totalPages; $i++): 
-                        $queryParams['page'] = $i;
+                        
+                        // First Page
+                        if($page > 1):
+                            $queryParams['page'] = 1;
                     ?>
-                    <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query($queryParams) ?>"><?= $i ?></a>
-                    </li>
+                        <li class="page-item"><a class="page-link" href="?<?= http_build_query($queryParams) ?>"><i class="fas fa-angle-double-left"></i></a></li>
+                    <?php endif; ?>
+
+                    <?php 
+                        // Page Number Range
+                        $start = max(1, $page - 2);
+                        $end = min($totalPages, $page + 2);
+
+                        for ($i = $start; $i <= $end; $i++): 
+                            $queryParams['page'] = $i;
+                    ?>
+                        <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                            <a class="page-link" href="?<?= http_build_query($queryParams) ?>"><?= $i ?></a>
+                        </li>
                     <?php endfor; ?>
+
+                    <?php 
+                        // Last Page
+                        if($page < $totalPages):
+                            $queryParams['page'] = $totalPages;
+                    ?>
+                        <li class="page-item"><a class="page-link" href="?<?= http_build_query($queryParams) ?>"><i class="fas fa-angle-double-right"></i></a></li>
+                    <?php endif; ?>
                 </ul>
             </nav>
         </div>

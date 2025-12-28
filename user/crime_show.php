@@ -58,6 +58,16 @@ foreach ($pdf_list as $pdf) {
         .nav-link { color: #94a3b8; padding: 12px 18px; border-radius: 8px; font-weight: 500; }
         .nav-link.active { background: #1e293b; color: #38bdf8; }
         .footer-copy { font-size: 0.75rem; color: #64748b; padding: 20px; text-align: center; margin-top: auto; border-top: 1px solid #1e293b; }
+
+        /* -------------------- PRINT STYLES -------------------- */
+        @media print {
+            #sidebar, #toggleBtn, .btn, .text-muted.italic, hr, .footer-copy { display: none !important; }
+            #content { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
+            .detail-card { border: 1px solid #000 !important; box-shadow: none !important; }
+            .detail-header { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
+            body { background: white !important; }
+            .info-value { color: black !important; }
+        }
     </style>
 </head>
 <body>
@@ -85,7 +95,12 @@ foreach ($pdf_list as $pdf) {
         <a href="dashboard.php" class="btn btn-link text-decoration-none p-0 text-muted">
             <i class="fas fa-arrow-left me-2"></i> Back to Repository
         </a>
-        <button id="toggleBtn" class="btn btn-outline-dark d-lg-none"><i class="fas fa-bars"></i></button>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-primary fw-bold shadow-sm">
+                <i class="fas fa-print me-2"></i> PRINT FILE
+            </button>
+            <button id="toggleBtn" class="btn btn-outline-dark d-lg-none"><i class="fas fa-bars"></i></button>
+        </div>
     </div>
 
     <div class="detail-card">
@@ -94,7 +109,7 @@ foreach ($pdf_list as $pdf) {
                 <span class="badge bg-primary mb-2">Subject Number</span>
                 <h3 class="fw-bold m-0"><?= htmlspecialchars($c['subject_number']) ?></h3>
             </div>
-            <div class="text-end d-none d-md-block">
+            <div class="text-end">
                 <p class="info-label m-0">In Date</p>
                 <p class="fw-bold text-primary m-0"><?= date('d M Y', strtotime($c['in_date'])) ?></p>
             </div>

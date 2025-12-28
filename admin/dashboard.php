@@ -55,18 +55,20 @@ if (!empty($_GET['search'])) {
 }
 
 /* -------------------- PAGINATION LOGIC -------------------- */
-$limit = 25; // Records per page
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 50; // Updated to 50 records per page
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
 $offset = ($page - 1) * $limit;
 
+// Calculate Total Rows based on current filters
 $totalQuery = mysqli_query($conn, "SELECT COUNT(*) as total FROM crime_files WHERE $where");
 $totalRows = mysqli_fetch_assoc($totalQuery)['total'];
 $totalPages = ceil($totalRows / $limit);
 
-// Main Query for Display
+// Main Query for Display (Includes Limit and Offset)
 $q = mysqli_query($conn, "SELECT * FROM crime_files WHERE $where ORDER BY $sort $order LIMIT $offset, $limit");
 
-// Query for Export (Full set based on filters, no limit)
+// Query for Export (Full set based on filters, NO pagination limit applied)
 $export_q = mysqli_query($conn, "SELECT * FROM crime_files WHERE $where ORDER BY $sort $order");
 
 /* -------------------- HELPER FUNCTIONS -------------------- */
@@ -85,6 +87,7 @@ function sortLink($column, $label) {
     $query = $_GET;
     $query['sort'] = $column;
     $query['order'] = $newOrder;
+    $query['page'] = 1; // Reset to page 1 when sorting
 
     return '<a href="?' . http_build_query($query) . '" class="text-nowrap text-dark text-decoration-none fw-bold small">' 
             . strtoupper($label) . $icon . '</a>';
@@ -356,13 +359,34 @@ function sortLink($column, $label) {
                 <ul class="pagination pagination-sm m-0 justify-content-center">
                     <?php 
                         $queryParams = $_GET;
-                        for ($i = 1; $i <= $totalPages; $i++): 
-                        $queryParams['page'] = $i;
+                        
+                        // Previous Button
+                        if($page > 1):
+                            $queryParams['page'] = $page - 1;
                     ?>
-                    <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query($queryParams) ?>"><?= $i ?></a>
-                    </li>
+                        <li class="page-item"><a class="page-link" href="?<?= http_build_query($queryParams) ?>">Previous</a></li>
+                    <?php endif; ?>
+
+                    <?php 
+                        // Page Numbers
+                        $start = max(1, $page - 2);
+                        $end = min($totalPages, $page + 2);
+
+                        for ($i = $start; $i <= $end; $i++): 
+                            $queryParams['page'] = $i;
+                    ?>
+                        <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                            <a class="page-link" href="?<?= http_build_query($queryParams) ?>"><?= $i ?></a>
+                        </li>
                     <?php endfor; ?>
+
+                    <?php 
+                        // Next Button
+                        if($page < $totalPages):
+                            $queryParams['page'] = $page + 1;
+                    ?>
+                        <li class="page-item"><a class="page-link" href="?<?= http_build_query($queryParams) ?>">Next</a></li>
+                    <?php endif; ?>
                 </ul>
             </nav>
         </div>

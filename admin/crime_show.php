@@ -82,6 +82,14 @@ $pdfs = mysqli_query($conn, "SELECT * FROM pdf_stuff WHERE crime_file_id = $id A
 
         .timeline-item { border-left: 2px solid #e2e8f0; padding-left: 15px; padding-bottom: 15px; position: relative; }
         .timeline-item::before { content: ""; width: 10px; height: 10px; background: #3b82f6; position: absolute; left: -6px; top: 5px; border-radius: 50%; }
+
+        /* -------------------- PRINT STYLES -------------------- */
+        @media print {
+            #sidebar, #toggleBtn, .breadcrumb, .btn, .info-card:last-child { display: none !important; }
+            #content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+            .info-card { border: none !important; box-shadow: none !important; }
+            body { background: white !important; }
+        }
     </style>
 </head>
 <body>
@@ -112,6 +120,9 @@ $pdfs = mysqli_query($conn, "SELECT * FROM pdf_stuff WHERE crime_file_id = $id A
             </ol>
         </nav>
         <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-primary fw-bold px-3">
+                <i class="fas fa-print me-1"></i> Print
+            </button>
             <a href="crime_files_edit.php?id=<?= $crime['id'] ?>" class="btn btn-warning fw-bold px-3">
                 <i class="fas fa-edit me-1"></i> Edit File
             </a>
